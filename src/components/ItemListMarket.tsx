@@ -120,14 +120,17 @@ export default function ItemListMarket({ account }: ItemListProps) {
                         <div className="w-full border-t border-gray-300" />
                     </div>
                     <div className="relative flex justify-start">
-                        <span className="bg-white pr-3 text-base font-semibold leading-6 text-gray-900">NFT Market</span>
+                        <span className="bg-white pr-3 text-base font-semibold leading-6 text-gray-900">入会受付中のUnion(販売中の会員券[NFT])</span>
                     </div>
                 </div>
                 <h2 className="sr-only">Products</h2>
                 <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
-                    {nfts.map((nft: AccountNFToken, index) => {
-                        const nftOffers = offers.find(offer => offer.nftId === nft.NFTokenID);
-                        const price = nftOffers && nftOffers.offers.length > 0 ? nftOffers.offers[0].amount : null;
+                    {offers.filter(offer => offer.offers.length > 0).map((offer, index) => {
+                        const nft = nfts.find(nft => nft.NFTokenID === offer.nftId);
+                        const metadata = metadataList[offer.nftId];
+                        const price = offer.offers[0].amount;
+
+                        if (!nft) return null;
 
                         return (
                             <div key={index}>
@@ -136,12 +139,12 @@ export default function ItemListMarket({ account }: ItemListProps) {
                                     className="group">
                                     <div className="aspect-h-1 aspect-w-1 w-full overflow-hidden rounded-lg bg-gray-200 xl:aspect-h-8 xl:aspect-w-7">
                                         <img
-                                            src={metadataList[nft.NFTokenID]?.image}
-                                            alt={metadataList[nft.NFTokenID]?.name}
+                                            src={metadata?.image}
+                                            alt={metadata?.name}
                                             className="h-full w-full object-cover object-center group-hover:opacity-75"
                                         />
                                     </div>
-                                    <h3 className="mt-4 text-sm text-gray-700">{metadataList[nft.NFTokenID]?.name}</h3>
+                                    <h3 className="mt-4 text-sm text-gray-700">{metadata?.name}</h3>
                                     <p className="flex mt-1 text-lg font-medium text-gray-900">
                                         <img
                                             className={"mr-1"}
@@ -149,18 +152,17 @@ export default function ItemListMarket({ account }: ItemListProps) {
                                             alt="XRP Icon"
                                             width={15}
                                             height={15}
-                                        />
-                                        Price: {price ? `${dropsToXrp(Number(price))} XRP` : ''}
+                                        />{price ? `${dropsToXrp(Number(price))}` : ''}
                                     </p>
                                 </div>
                                 <dialog key={index} id={`market_modal_${index}`} className="modal">
                                     <div className="modal-box w-10/12 max-w-5xl">
-                                        <h3 className="font-bold text-lg">{metadataList[nft.NFTokenID]?.name}</h3>
+                                        <h3 className="font-bold text-lg">{metadata?.name}</h3>
                                         <p className="py-4"></p>
                                         <div className="overflow-hidden rounded-lg flex items-center justify-center">
                                             <img
-                                                src={metadataList[nft.NFTokenID]?.image}
-                                                alt={metadataList[nft.NFTokenID]?.name}
+                                                src={metadata?.image}
+                                                alt={metadata?.name}
                                                 className="w-1/3 h-1/3 rounded-lg"
                                             />
                                         </div>
@@ -172,8 +174,7 @@ export default function ItemListMarket({ account }: ItemListProps) {
                                                     alt="XRP Icon"
                                                     width={15}
                                                     height={15}
-                                                />
-                                                Price: {price ? `${price} XRP` : 'N/A'}
+                                                />{price ? `${dropsToXrp(Number(price))}` : ''}
                                             </p>
                                         </div>
                                         <div className="flex items-center justify-center mt-8">
