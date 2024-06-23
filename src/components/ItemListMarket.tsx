@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Client, AccountNFTsRequest, AccountNFToken, convertHexToString, NFTSellOffersRequest, NFTOffer } from 'xrpl';
+import {
+    Client,
+    AccountNFTsRequest,
+    AccountNFToken,
+    convertHexToString,
+    NFTSellOffersRequest,
+    NFTOffer,
+    dropsToXrp
+} from 'xrpl';
 
 type ItemListProps = {
     account: string | undefined;
@@ -13,7 +21,7 @@ const fetchMetadata = async (uri: string) => {
 
 export default function ItemListMarket({ account }: ItemListProps) {
     const [nfts, setNfts] = useState<AccountNFToken[]>([]);
-    const [offers, setOffers] = useState<{ [nftId: string]: NFTOffer[] }>({});
+    const [offers, setOffers] = useState<{ nftId: string; offers: NFTOffer[] }[]>([]);
     const [metadataList, setMetadataList] = useState<{ [key: string]: any }>({});
 
     useEffect(() => {
@@ -50,16 +58,23 @@ export default function ItemListMarket({ account }: ItemListProps) {
                     nft_id: nft.NFTokenID,
                 };
 
-                const response = await client.request(request);
-                return { nftId: nft.NFTokenID, result: response.result, offers: response.result.offers || [] };
+                try {
+                    const response = await client.request(request);
+                    console.log(`Offers for NFT ID ${nft.NFTokenID}:`, response.result.offers);
+                    return { nftId: nft.NFTokenID, offers: response.result.offers || [] };
+                } catch (error) {
+                    console.error(`Error fetching offers for NFT ID ${nft.NFTokenID}:`, error);
+                    return { nftId: nft.NFTokenID, offers: [] };
+                }
             });
 
-            const resolvedOffers = await Promise.all(offerPromises);
-            const offersMap = resolvedOffers.reduce((acc, { nftId, offers }) => {
-                acc[nftId] = offers;
-                return acc;
-            }, {} as { [nftId: string]: NFTOffer[] });
-            setOffers(offersMap);
+            try {
+                const resolvedOffers = await Promise.all(offerPromises);
+                console.log('All offers:', resolvedOffers);
+                setOffers(resolvedOffers);
+            } catch (error) {
+                console.error('Error resolving offer promises:', error);
+            }
 
             await client.disconnect();
         };
@@ -97,12 +112,6 @@ export default function ItemListMarket({ account }: ItemListProps) {
         }
     }, [nfts]);
 
-    const getPriceForNFT = (nftId: string) => {
-        console.log(offers);
-        const nftOffers = offers[nftId];
-        return nftOffers && nftOffers.length > 0 ? nftOffers[0].amount : null;
-    };
-
     return (
         <div className="bg-white">
             <div className="mx-auto max-w-2xl px-4 pt-16 sm:px-6 sm:pt-24 lg:max-w-7xl lg:px-8">
@@ -115,17 +124,17 @@ export default function ItemListMarket({ account }: ItemListProps) {
                     </div>
                 </div>
                 <h2 className="sr-only">Products</h2>
-                <div
-                    className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
+                <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
                     {nfts.map((nft: AccountNFToken, index) => {
-                        const price = getPriceForNFT(nft.NFTokenID);
+                        const nftOffers = offers.find(offer => offer.nftId === nft.NFTokenID);
+                        const price = nftOffers && nftOffers.offers.length > 0 ? nftOffers.offers[0].amount : null;
+
                         return (
                             <div key={index}>
                                 <div
                                     onClick={() => (document.getElementById(`market_modal_${index}`) as HTMLDialogElement).showModal()}
                                     className="group">
-                                    <div
-                                        className="aspect-h-1 aspect-w-1 w-full overflow-hidden rounded-lg bg-gray-200 xl:aspect-h-8 xl:aspect-w-7">
+                                    <div className="aspect-h-1 aspect-w-1 w-full overflow-hidden rounded-lg bg-gray-200 xl:aspect-h-8 xl:aspect-w-7">
                                         <img
                                             src={metadataList[nft.NFTokenID]?.image}
                                             alt={metadataList[nft.NFTokenID]?.name}
@@ -141,15 +150,14 @@ export default function ItemListMarket({ account }: ItemListProps) {
                                             width={15}
                                             height={15}
                                         />
-                                        Price: {price ? `${price} XRP` : 'N/A'}
+                                        Price: {price ? `${dropsToXrp(Number(price))} XRP` : ''}
                                     </p>
                                 </div>
                                 <dialog key={index} id={`market_modal_${index}`} className="modal">
                                     <div className="modal-box w-10/12 max-w-5xl">
                                         <h3 className="font-bold text-lg">{metadataList[nft.NFTokenID]?.name}</h3>
                                         <p className="py-4"></p>
-                                        <div
-                                            className="overflow-hidden rounded-lg flex items-center justify-center">
+                                        <div className="overflow-hidden rounded-lg flex items-center justify-center">
                                             <img
                                                 src={metadataList[nft.NFTokenID]?.image}
                                                 alt={metadataList[nft.NFTokenID]?.name}
