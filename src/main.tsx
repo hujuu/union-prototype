@@ -6,11 +6,16 @@ import {
 } from "react-router-dom";
 import './index.css'
 import Root from "./routes/root";
+import Union from "./routes/union";
 
 const router = createBrowserRouter([
     {
         path: "/",
         element: <Root />,
+    },
+    {
+        path: "union/:unionId",
+        element: <Union />,
     },
 ]);
 
